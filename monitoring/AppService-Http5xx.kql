@@ -1,0 +1,7 @@
+// Azure App Service HTTP 5xx monitoring
+// Use this KQL in Application Insights / Log Analytics to identify sustained server-side failures.
+requests
+| where timestamp > ago(24h)
+| where tostring(resultCode) startswith "5"
+| summarize FailureCount = count() by bin(timestamp, 5m), cloud_RoleName, resultCode
+| order by timestamp desc
