@@ -1,0 +1,12 @@
+// Azure Monitor / Application Insights example
+// Purpose: detect sustained HTTP 5xx failures for an application.
+// Adapt table/column names to the workspace schema before using in production.
+//
+// Typical alert pattern: more than 10 server errors in a 5-minute bin.
+
+requests
+| where timestamp > ago(30m)
+| where toint(resultCode) >= 500 and toint(resultCode) <= 599
+| summarize ErrorCount = count() by bin(timestamp, 5m), resultCode
+| where ErrorCount > 10
+| order by timestamp desc

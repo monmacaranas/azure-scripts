@@ -1,0 +1,9 @@
+// App Service / Log Analytics 5xx example.
+// Adapt the table and resource filter to the workspace schema before creating an alert rule.
+
+AppServiceHTTPLogs
+| where TimeGenerated > ago(30m)
+| where ScStatus between (500 .. 599)
+| summarize ErrorCount = count() by bin(TimeGenerated, 5m), ScStatus
+| where ErrorCount > 10
+| order by TimeGenerated desc

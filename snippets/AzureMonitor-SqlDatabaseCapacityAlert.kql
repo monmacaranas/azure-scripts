@@ -1,0 +1,14 @@
+// Reference KQL pattern for Azure SQL capacity/percentage metrics after routing metrics to Log Analytics.
+// Metric schemas differ by collection path. Adapt MetricName/Total to the workspace in use.
+
+AzureMetrics
+| where TimeGenerated > ago(1h)
+| where ResourceProvider =~ "MICROSOFT.SQL"
+| where MetricName in ("storage_percent", "allocated_data_storage")
+| summarize MaxValue = max(Maximum) by ResourceId, MetricName, bin(TimeGenerated, 5m)
+| order by TimeGenerated desc
+
+// Suggested operational model:
+// Warning: capacity >= 80%
+// Critical: capacity >= 90%
+// Validate the metric semantics and thresholds for the database/service tier before production use.
