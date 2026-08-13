@@ -1,40 +1,27 @@
 <#
 .SYNOPSIS
-    Read-only SCHANNEL / .NET TLS diagnostic for ClickOnce deployment failures.
+Read-only SCHANNEL / .NET TLS diagnostic for ClickOnce deployment failures.
 
 .DESCRIPTION
-    Collects TLS 1.0/1.1/1.2/1.3 SCHANNEL registry state, .NET SchUseStrongCrypto settings,
-    the current .NET SecurityProtocol, available cipher suites, and DNS/TCP reachability to
-    the ClickOnce endpoint. Makes no changes.
+Collects TLS 1.0/1.1/1.2/1.3 SCHANNEL registry state, .NET SchUseStrongCrypto settings,
+current .NET SecurityProtocol, cipher suites, DNS resolution and TCP reachability. Run on a
+working and affected device and compare results before changing TLS configuration.
 
-    Originated from MOWINC0138201 (P1 — IFS Enterprise Explorer failing to launch via
-    ClickOnce with "Could not create SSL/TLS secure channel" on specific laptops while
-    replacement laptops worked fine). Run this on both a working device and an affected
-    device and diff the output before changing anything — in that incident, the working
-    device had NO explicit TLS registry entries at all (pure system defaults), while the
-    affected device had explicit overrides that were themselves breaking ClickOnce's TLS
-    negotiation/fallback logic. See scripts/rollback/Set-TlsRegistryState.ps1.
+SAFETY: READ-ONLY.
 
 .PARAMETER HostName
-    FQDN of the ClickOnce/application endpoint, e.g. ifs10.erb.global
+FQDN of the ClickOnce/application endpoint, for example <application-hostname>.
 
 .PARAMETER Port
-    HTTPS port the endpoint listens on. Defaults to 443.
+HTTPS port the endpoint listens on. Defaults to 443.
 
 .EXAMPLE
-    .\Get-ClickOnceTlsDiagnostic.ps1 -HostName ifs10.erb.global -Port 48080
-
-.NOTES
-    Run as Administrator for full registry access. Read-only — safe to run anytime.
+.\Get-ClickOnceTlsDiagnostic.ps1 -HostName '<application-hostname>' -Port 443
 #>
-
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$HostName,
-
-    [Parameter(Mandatory = $false)]
-    [int]$Port = 443
+    [Parameter(Mandatory = $true)][string]$HostName,
+    [Parameter(Mandatory = $false)][int]$Port = 443
 )
 
 Write-Host "=== SCHANNEL / TLS Registry State ===" -ForegroundColor Cyan
@@ -60,12 +47,10 @@ foreach ($name in $netKeys.Keys) {
         $val = Get-ItemProperty -Path $path -Name "SchUseStrongCrypto" -ErrorAction SilentlyContinue
         if ($val) { Write-Host "  SchUseStrongCrypto = $($val.SchUseStrongCrypto)" }
         else { Write-Host "  SchUseStrongCrypto not set" }
-    } else {
-        Write-Host "  Key not found"
-    }
+    } else { Write-Host "  Key not found" }
 }
 
-Write-Host "`n=== Current .NET SecurityProtocol (this session) ===" -ForegroundColor Cyan
+Write-Host "`n=== Current .NET SecurityProtocol ===" -ForegroundColor Cyan
 Write-Host "  $([Net.ServicePointManager]::SecurityProtocol)"
 
 Write-Host "`n=== Available TLS Cipher Suites ===" -ForegroundColor Cyan
@@ -76,7 +61,3 @@ Resolve-DnsName $HostName -ErrorAction SilentlyContinue
 
 Write-Host "`n=== TCP Connectivity: $HostName`:$Port ===" -ForegroundColor Cyan
 Test-NetConnection -ComputerName $HostName -Port $Port
-
-Write-Host "`n=== Reminder ===" -ForegroundColor Yellow
-Write-Host "Compare this output against a known-working device before changing any TLS registry state."
-Write-Host "If results look inconsistent with a Group Policy baseline: gpresult /h gpreport.html (search 'SCHANNEL' or 'TLS')."
