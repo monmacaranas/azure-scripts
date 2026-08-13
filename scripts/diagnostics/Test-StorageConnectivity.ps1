@@ -1,54 +1,36 @@
 <#
 .SYNOPSIS
-    Diagnoses "can't reach the storage account" symptoms from a client machine (dev laptop,
-    VPN-connected or not), distinguishing DNS/network problems from application-layer ones.
+Diagnoses "can't reach the storage account" symptoms from a client machine.
 
 .DESCRIPTION
-    Grew out of troubleshooting three separate Safetrac storage-connectivity tickets, where
-    the pattern initially looked like a shared network/firewall block across accounts but
-    turned out to be distinct, non-network causes each time (a malformed URL, an expired
-    credential, and a stale VPN DNS/connection-pool state). Run this BEFORE assuming a
-    network or Private Endpoint problem -- it usually rules the network layer out fast.
+Use this before assuming a network, firewall or Private Endpoint problem. It checks DNS,
+ICMP and TCP 443 using the operating system resolver and helps separate network issues from
+application/authentication issues.
 
-    Deliberately avoids plain `nslookup` with no server argument: it queries the local
-    router/DNS server directly and can time out under a connected VPN even when the real
-    resolver (used by ping, Test-NetConnection, and actual applications) works fine. That
-    false signal cost real troubleshooting time once already -- don't repeat it.
+SAFETY: READ-ONLY.
 
 .PARAMETER StorageAccountHostname
-    Fully-qualified blob endpoint, e.g. saasesafetractest.blob.core.windows.net
+Fully-qualified storage endpoint, for example <storage-account>.blob.core.windows.net.
 
 .EXAMPLE
-    ./Test-StorageConnectivity.ps1 -StorageAccountHostname saasesafetractest.blob.core.windows.net
-
-.NOTES
-    Run once with the VPN connected and once without, and compare. If a Private Endpoint is
-    configured, expect the resolved IP to differ between the two runs (private IP on VPN,
-    public IP off VPN) -- that's expected and healthy, not a fault.
-    If everything below succeeds but the application still fails, the cause is very likely
-    application-layer (credential, connection string, or a cached connection from before a
-    VPN state change) rather than network/firewall -- see the repo README troubleshooting
-    notes for the "restart after VPN state change" pattern.
+.\Test-StorageConnectivity.ps1 -StorageAccountHostname '<storage-account>.blob.core.windows.net'
 #>
-
 [CmdletBinding()]
-param(
-    [Parameter(Mandatory)]
-    [string] $StorageAccountHostname
-)
+param([Parameter(Mandatory)][string]$StorageAccountHostname)
 
 Write-Output "=== Storage connectivity check: $StorageAccountHostname ==="
 Write-Output "Timestamp (local): $(Get-Date)"
 Write-Output ""
 
-Write-Output "--- DNS resolution (using the OS resolver, not a direct server query) ---"
+Write-Output "--- DNS resolution ---"
 try {
-    Resolve-DnsName -Name $StorageAccountHostname -ErrorAction Stop | Format-Table Name, IPAddress -AutoSize
+    Resolve-DnsName -Name $StorageAccountHostname -ErrorAction Stop |
+        Format-Table Name, IPAddress -AutoSize
 } catch {
     Write-Warning "Resolve-DnsName failed: $($_.Exception.Message)"
 }
 
-Write-Output "--- Ping (ICMP; some networks block this even when TCP works fine) ---"
+Write-Output "--- Ping ---"
 try {
     Test-Connection -ComputerName $StorageAccountHostname -Count 2 -ErrorAction Stop |
         Format-Table Address, ResponseTime -AutoSize
@@ -56,14 +38,13 @@ try {
     Write-Warning "Ping failed or was blocked: $($_.Exception.Message)"
 }
 
-Write-Output "--- TCP 443 reachability (the check that actually matters for HTTPS traffic) ---"
+Write-Output "--- TCP 443 reachability ---"
 try {
-    $result = Test-NetConnection -ComputerName $StorageAccountHostname -Port 443 -ErrorAction Stop
-    $result | Format-List ComputerName, RemoteAddress, RemotePort, TcpTestSucceeded
+    Test-NetConnection -ComputerName $StorageAccountHostname -Port 443 -ErrorAction Stop |
+        Format-List ComputerName, RemoteAddress, RemotePort, TcpTestSucceeded
 } catch {
     Write-Warning "Test-NetConnection failed: $($_.Exception.Message)"
 }
 
 Write-Output ""
-Write-Output "If TcpTestSucceeded is True, the network path is fine -- look at the application's"
-Write-Output "own error (auth failure vs. resource-not-found vs. timeout) rather than the network."
+Write-Output "If TCP 443 succeeds, investigate application authentication, URL/path and cached connection state next."
