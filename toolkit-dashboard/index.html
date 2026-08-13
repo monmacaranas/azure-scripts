@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AZURE OPERATIONS TOOLKIT</title>
+<style>
+:root{--bg:#07111f;--panel:#0d1b2a;--panel2:#11253a;--text:#e8f1f8;--muted:#91a6b8;--accent:#37a9ff;--ok:#50c878;--warn:#ffbf47;--border:#20384f}
+*{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,#06101c,#0b1d31);color:var(--text);min-height:100vh}
+.wrap{max-width:1300px;margin:auto;padding:28px}.header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:24px}.title h1{margin:0;font-size:30px;letter-spacing:.5px}.title p{color:var(--muted);margin:8px 0 0}.badge{border:1px solid var(--border);background:var(--panel);padding:10px 14px;border-radius:10px;color:var(--muted);white-space:nowrap}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}.toolbar input,.toolbar select{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:11px 12px;border-radius:9px}.toolbar input{min-width:280px;flex:1}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}.card{background:rgba(13,27,42,.95);border:1px solid var(--border);border-radius:13px;padding:17px;transition:.18s}.card:hover{transform:translateY(-2px);border-color:#35658d}.num{font-size:13px;color:var(--accent);font-weight:700}.card h2{font-size:17px;margin:6px 0}.desc{color:var(--muted);font-size:13px;min-height:38px}.meta{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.pill{font-size:11px;padding:5px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--border)}.pill.read{color:var(--ok)}.pill.review{color:var(--warn)}code{display:block;background:#06111d;border:1px solid #182f44;padding:10px;border-radius:8px;white-space:pre-wrap;word-break:break-word;color:#d9edf9;font-size:12px;min-height:62px}.actions{display:flex;gap:8px;margin-top:10px}.btn{cursor:pointer;border:1px solid #2a5b82;background:#123b5b;color:white;padding:8px 10px;border-radius:8px;font-size:12px}.btn:hover{background:#174d76}.footer{margin-top:22px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);padding-top:16px}.hidden{display:none}.status{color:var(--ok);font-size:12px;margin-left:auto;align-self:center}
+@media(max-width:700px){.header{display:block}.badge{display:inline-block;margin-top:14px}.wrap{padding:18px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="title">
+      <h1>AZURE OPERATIONS TOOLKIT</h1>
+      <p>Central dashboard for Azure troubleshooting, verification, security review and operational diagnostics.</p>
+    </div>
+    <div class="badge">Source: monmacaranas/azure-scripts</div>
+  </div>
+
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="Search tasks, e.g. DNS, SQL, Defender, FTP..." />
+    <select id="filter">
+      <option value="all">All categories</option>
+      <option value="network">Network</option>
+      <option value="storage">Storage</option>
+      <option value="app">Application</option>
+      <option value="sql">SQL</option>
+      <option value="security">Security</option>
+      <option value="governance">Governance</option>
+    </select>
+    <span class="status" id="status">Select task</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="footer">
+    Diagnostic and verification commands should be reviewed before execution. Change-producing automation or rollback scripts require normal change control. Replace all &lt;placeholders&gt; with approved environment values; never paste secrets into the dashboard.
+  </div>
+</div>
+<script>
+const tasks = [
+{n:1,title:'Network / DNS Diagnostic',cat:'network',safe:'Read-only',script:'scripts/diagnostics/Get-AzureNetworkDiagnostic.ps1',desc:'DNS resolution, TCP connectivity, routes, DNS client configuration, proxy and optional HTTPS testing.',cmd:`.\\scripts\\diagnostics\\Get-AzureNetworkDiagnostic.ps1 -HostName "<hostname>" -Port 443`},
+{n:2,title:'Storage Connectivity',cat:'storage',safe:'Read-only',script:'scripts/diagnostics/Test-StorageConnectivity.ps1',desc:'Quick DNS, ICMP and TCP 443 checks for Azure Storage connectivity issues.',cmd:`.\\scripts\\diagnostics\\Test-StorageConnectivity.ps1 -StorageAccountHostname "<storage-account>.blob.core.windows.net"`},
+{n:3,title:'Private Endpoint Diagnostic',cat:'network',safe:'Read-only',script:'scripts/diagnostics/Get-PrivateEndpointDnsDiagnostic.ps1',desc:'Compare service and Private Link DNS resolution and validate private endpoint name resolution.',cmd:`.\\scripts\\diagnostics\\Get-PrivateEndpointDnsDiagnostic.ps1 -HostName "<service-hostname>"`},
+{n:4,title:'Application Gateway Diagnostic',cat:'network',safe:'Read-only',script:'scripts/diagnostics/Get-AppGatewayDiagnostic.ps1',desc:'Collect SKU, frontend, listeners, backend pools, HTTP settings, probes, routing, TLS and backend health.',cmd:`.\\scripts\\diagnostics\\Get-AppGatewayDiagnostic.ps1 -ResourceGroupName "<resource-group>" -ApplicationGatewayName "<app-gateway>"`},
+{n:5,title:'App Service Diagnostic',cat:'app',safe:'Read-only',script:'scripts/diagnostics/Get-AppServiceHealthDiagnostic.ps1',desc:'App Service state, hosting plan, outbound IPs, VNet integration and configuration inspection.',cmd:`.\\scripts\\diagnostics\\Get-AppServiceHealthDiagnostic.ps1 -ResourceGroupName "<resource-group>" -WebAppName "<app-service>"`},
+{n:6,title:'Azure SQL Capacity',cat:'sql',safe:'Read-only',script:'scripts/diagnostics/Get-AzureSqlDatabaseCapacity.ps1',desc:'Database tier, configured max size, storage consumption and quota investigation.',cmd:`.\\scripts\\diagnostics\\Get-AzureSqlDatabaseCapacity.ps1 -ResourceGroupName "<resource-group>" -ServerName "<sql-server>" -DatabaseName "<database>"`},
+{n:7,title:'FTP Connection Diagnostic',cat:'network',safe:'Read-only',script:'scripts/diagnostics/Get-FtpDiagnostic.ps1',desc:'FTP/FTPS/SFTP DNS and port connectivity evidence for incidents and alert PoCs.',cmd:`.\\scripts\\diagnostics\\Get-FtpDiagnostic.ps1 -HostName "<ftp-hostname>"`},
+{n:8,title:'RBAC / Privileged Access Report',cat:'security',safe:'Read-only',script:'scripts/verification/Get-AzureRoleAssignmentsReport.ps1',desc:'Inventory Owner, Contributor and other high-impact Azure RBAC assignments for access reviews and PIM.',cmd:`.\\scripts\\verification\\Get-AzureRoleAssignmentsReport.ps1 -Scope "/subscriptions/<subscription-id>"`},
+{n:9,title:'Defender Findings',cat:'security',safe:'Read-only',script:'scripts/verification/Get-AzureDefenderFindings.ps1',desc:'Export active Microsoft Defender for Cloud recommendations through Azure Resource Graph.',cmd:`.\\scripts\\verification\\Get-AzureDefenderFindings.ps1`},
+{n:10,title:'SQL Retention Report',cat:'sql',safe:'Read-only',script:'scripts/verification/Get-AzureSqlRetentionStatus.ps1',desc:'Review Azure SQL short-term and long-term backup retention configuration.',cmd:`.\\scripts\\verification\\Get-AzureSqlRetentionStatus.ps1 -ResourceGroupName "<resource-group>" -ServerName "<sql-server>"`},
+{n:11,title:'Azure Retirement Inventory',cat:'governance',safe:'Read-only',script:'scripts/verification/Get-AzureResourceRetirementInventory.ps1',desc:'Build a searchable resource inventory for service, API and SKU retirement assessments.',cmd:`.\\scripts\\verification\\Get-AzureResourceRetirementInventory.ps1`}
+];
+const grid=document.getElementById('grid');
+function draw(){
+ const q=document.getElementById('search').value.toLowerCase(); const f=document.getElementById('filter').value;
+ grid.innerHTML='';
+ tasks.filter(t=>(f==='all'||t.cat===f)&&(`${t.title} ${t.desc} ${t.script}`.toLowerCase().includes(q))).forEach(t=>{
+  const d=document.createElement('div'); d.className='card';
+  d.innerHTML=`<div class="num">[${t.n}]</div><h2>${t.title}</h2><div class="desc">${t.desc}</div><div class="meta"><span class="pill">${t.cat}</span><span class="pill read">${t.safe}</span></div><code>${t.cmd.replaceAll('<','&lt;').replaceAll('>','&gt;')}</code><div class="actions"><button class="btn" data-cmd="${encodeURIComponent(t.cmd)}">Copy command</button><button class="btn" data-path="${t.script}">Copy path</button></div>`;
+  grid.appendChild(d);
+ });
+ document.querySelectorAll('[data-cmd]').forEach(b=>b.onclick=()=>copy(decodeURIComponent(b.dataset.cmd),`Task command copied`));
+ document.querySelectorAll('[data-path]').forEach(b=>b.onclick=()=>copy(b.dataset.path,`Script path copied`));
+}
+function copy(text,msg){navigator.clipboard.writeText(text); const s=document.getElementById('status');s.textContent=msg;setTimeout(()=>s.textContent='Select task',1800)}
+document.getElementById('search').addEventListener('input',draw);document.getElementById('filter').addEventListener('change',draw);draw();
+</script>
+</body>
+</html>
