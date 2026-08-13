@@ -45,7 +45,7 @@ Use it for issues involving Application Gateway, IFS/ClickOnce, App Service, Pri
 Example:
 
 ```powershell
-.\Get-AzureNetworkDiagnostic.ps1 -HostName ifs10.erb.global -Port 48080 -HttpsPath /admin
+.\Get-AzureNetworkDiagnostic.ps1 -HostName ifs10.abc.world -Port 48080 -HttpsPath /admin
 ```
 
 **`Get-FtpDiagnostic.ps1`**
