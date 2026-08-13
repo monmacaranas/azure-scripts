@@ -1,179 +1,94 @@
 # Azure & Infra Scripts
 
-A working collection of PowerShell, Bash, Azure CLI, and reference code used for troubleshooting, verification, automation, and recovery across Azure infrastructure.
+A practical collection of PowerShell, Bash, Azure CLI, and reference code used for Azure troubleshooting, verification, automation, security review, and recovery.
 
-The purpose of this repository is practical: troubleshooting commands and small operational automations should not live only in chat histories, tickets, or one-off terminal sessions. When the same DNS check, storage test, role-assignment fix, SQL capacity investigation, FTP diagnostic, or rollback is needed again, it should already exist here as a reusable script.
+The goal is simple: useful commands should not live only in chat histories, Jira tickets, incident notes, or one-off terminal sessions. If a DNS check, RBAC review, SQL investigation, Application Gateway diagnostic, Private Endpoint test, or rollback is useful more than once, it belongs here as a reusable script.
 
-Nothing in this repository should contain passwords, access keys, client secrets, certificates, SAS tokens, or other credentials. Resource names shown in examples are operational examples only; replace them with the correct values for the environment being investigated.
-
-## How this repository is used
-
-The scripts are primarily used for:
-
-- Azure incident troubleshooting and evidence collection
-- DNS, routing, TCP, Private Endpoint, and Application Gateway investigations
-- Azure Storage and App Service connectivity troubleshooting
-- Azure SQL capacity and quota investigations
-- FTP/FTPS production connectivity troubleshooting and alert PoC work
-- Managed Identity and RBAC verification
-- Azure Automation and Defender for Cloud operational tasks
-- Configuration verification before and after changes
-- Controlled rollback procedures
-- Collecting evidence for Jira tickets, change records, incident reports, and technical documentation
+> **Security:** Never commit passwords, access keys, client secrets, certificates, SAS tokens, or exported authentication context. Scripts should be parameterized and should clearly state whether they are read-only or change live Azure configuration.
 
 ## Layout
 
 ```text
 scripts/
-  automation/     Scheduled or repeatable Azure operational automation
+  automation/     Scheduled or repeatable operational automation
   diagnostics/    Read-only troubleshooting and evidence collection
-  verification/   Read-only checks that confirm a specific configuration
-  rollback/       Controlled scripts that can change live state and should be reviewed first
-snippets/         Reference code patterns rather than standalone operational scripts
+  verification/   Read-only configuration, access, security and compliance checks
+  rollback/       Controlled scripts that can change live state
+snippets/         Reference code patterns rather than standalone scripts
 ```
 
 ## Script catalogue
 
-### scripts/diagnostics/
+### Diagnostics
 
-**`Get-AzureNetworkDiagnostic.ps1`**
+| Script | Purpose |
+|---|---|
+| `Get-AzureNetworkDiagnostic.ps1` | General DNS, TCP, routing, proxy and HTTPS first-response troubleshooting for Azure-hosted endpoints. |
+| `Test-IfsConnectivity.ps1` | IFS/ClickOnce connectivity checks including DNS, TCP 48080, HTTPS, expected Application Gateway IP and optional backend-server tests. |
+| `Get-AppGatewayDiagnostic.ps1` | Application Gateway SKU, frontend, listeners, pools, HTTP settings, probes, routing, TLS certificates and backend-health collection. |
+| `Get-FtpDiagnostic.ps1` | FTP/FTPS/SFTP DNS and port connectivity evidence collection for incidents and connection-alert PoC work. |
+| `Get-PrivateEndpointDnsDiagnostic.ps1` | Compares service and Private Link DNS resolution, including optional direct queries to an internal DNS server. |
+| `Get-PrivateDnsZoneReport.ps1` | Reports Private DNS zones, VNet links and A records for Private Endpoint troubleshooting. |
+| `Test-StorageConnectivity.ps1` | DNS, ping and TCP 443 checks for Azure Storage connectivity investigations. |
+| `Get-StorageAccountSecurityDiagnostic.ps1` | Storage firewall, public access, TLS, shared-key, network rules and Private Endpoint security review. |
+| `Get-AppServiceHealthDiagnostic.ps1` | App Service state, plan, outbound IPs, VNet integration and storage-relevant configuration inspection. |
+| `Get-AzureSqlDatabaseCapacity.ps1` | Azure SQL tier, configured size, storage usage and quota-utilization investigation. |
 
-General-purpose first-response network diagnostic for Azure-hosted applications and endpoints. Collects DNS resolution, TCP connectivity, local IP/DNS configuration, IPv4 routes, WinHTTP proxy configuration, and optionally an HTTPS request result.
+### Verification and reporting
 
-Use it for issues involving Application Gateway, IFS/ClickOnce, App Service, Private Endpoints, Azure Storage, APIs, or other services that appear unreachable from a Windows client or server. The purpose is to gather evidence before changing NSGs, UDRs, Azure Firewall, Private DNS, Application Gateway, or application configuration.
+| Script | Purpose |
+|---|---|
+| `Get-AzureRoleAssignmentsReport.ps1` | Inventory Owner, Contributor and other high-impact RBAC assignments for privileged-access/PIM reviews. |
+| `Get-AzureDeveloperAccessReport.ps1` | Inventory designated developer object IDs across Corp, Prod or other Azure scopes. |
+| `Get-AzureDefenderFindings.ps1` | Export active Microsoft Defender for Cloud recommendations using Azure Resource Graph. |
+| `Get-AzureSqlRetentionStatus.ps1` | Report Azure SQL short-term and long-term backup-retention configuration. |
+| `Get-AzureResourceRetirementInventory.ps1` | Build a searchable Azure resource inventory for service/API/SKU retirement assessments. |
+| `verify-cross-subscription-identity.sh` | Verify Managed Identity and RBAC access across subscriptions, including a live authorization test. |
+| `inspect-app-service-storage-config.sh` | Inspect App Service outbound IP, VNet integration and Storage/Key Vault-related settings. |
 
-Example:
+### Automation
 
-```powershell
-.\Get-AzureNetworkDiagnostic.ps1 -HostName ifs10.abc.world -Port 48080 -HttpsPath /admin
-```
+| Script | Purpose |
+|---|---|
+| `Invoke-SqlVaBaselineAcceptance.ps1` | Azure Automation runbook for SQL Vulnerability Assessment baseline acceptance. Review security implications before scheduling. |
+| `Grant-SqlVaRunbookPermissions.ps1` | One-time RBAC setup for the SQL VA Automation Account managed identity. |
 
-**`Get-FtpDiagnostic.ps1`**
+### Rollback
 
-Read-only FTP/FTPS/SFTP connectivity evidence collector. Tests DNS and selected ports such as 21, 22, and 990, and records the local DNS, routing, and proxy state.
+| Script | Purpose |
+|---|---|
+| `rollback-managed-identity-storage-auth.sh` | Controlled rollback for a Managed Identity-based Azure Storage authentication migration. **Changes live state.** |
 
-Use it for production FTP incidents and for work such as ITP-346 where the available FTP diagnostic/log source and connection alert design need to be established before implementing monitoring. It deliberately does not authenticate or handle FTP credentials.
+### Snippets
 
-Example:
+| File | Purpose |
+|---|---|
+| `BlobStorageService.DefaultAzureCredential.cs` | C# reference pattern for Blob Storage authentication using `DefaultAzureCredential` instead of account keys/connection strings. |
 
-```powershell
-.\Get-FtpDiagnostic.ps1 -HostName ftp.example.com -Ports 21,22,990
-```
+## Common troubleshooting workflow
 
-**`Get-PrivateEndpointDnsDiagnostic.ps1`**
-
-Checks normal and Private Link DNS resolution for a resource and can query a specific DNS server directly. Also performs a TCP 443 test against the service FQDN.
-
-Use it when a VM, AVD host, pipeline agent, or application resolves an Azure service incorrectly after Private Endpoint deployment. Useful for Azure Storage, SQL, Key Vault, App Service, and similar Private Link-enabled services before changing Private DNS zones, VNet links, custom DNS servers, or forwarders.
-
-Example:
-
-```powershell
-.\Get-PrivateEndpointDnsDiagnostic.ps1 `
-  -HostName mystorage.blob.core.windows.net `
-  -PrivateLinkHostName mystorage.privatelink.blob.core.windows.net `
-  -DnsServer 10.0.3.4
-```
-
-**`Get-AzureSqlDatabaseCapacity.ps1`**
-
-Reports the current Azure SQL Database service tier, configured maximum size, recent storage usage, and utilization percentage.
-
-Use this when Azure Data Factory, ETL, or application activity fails with errors such as "database has reached its size quota." It provides the information needed to decide whether to increase database storage, scale the tier, clean up data, review indexes, or configure warning/critical alerts.
-
-Example:
-
-```powershell
-.\Get-AzureSqlDatabaseCapacity.ps1 `
-  -ResourceGroupName rg-data `
-  -ServerName sql-prod `
-  -DatabaseName appdb
-```
-
-**`Test-StorageConnectivity.ps1`**
-
-DNS, ping, and TCP 443 checks for "cannot reach the storage account" symptoms from a client machine, with or without VPN connectivity.
-
-Use it to determine whether an Azure Storage problem is actually at the network layer before changing firewall rules, Private Endpoints, DNS, or application configuration.
-
-### scripts/verification/
-
-**`verify-cross-subscription-identity.sh`**
-
-Confirms the key pieces of a cross-subscription Managed Identity configuration: identity availability, RBAC assignment in the target subscription, and a live authorization test against the target resource.
-
-Use it when an application or Azure resource uses a managed identity to access a resource located in another subscription.
-
-**`inspect-app-service-storage-config.sh`**
-
-First-pass inspection of App Service configuration related to Azure Storage. Reviews outbound IP information, VNet integration, and application settings that reference Storage or Key Vault.
-
-Use it before assuming a storage access failure is caused by networking.
-
-### scripts/automation/
-
-**`Invoke-SqlVaBaselineAcceptance.ps1`**
-
-Azure Automation runbook for accepting Microsoft Defender for Cloud SQL Vulnerability Assessment findings as the current baseline across databases on a SQL server. Runs under a System-Assigned Managed Identity.
-
-Review the script notes before scheduling it in a new environment. Baselining marks the current state as expected, so it should be used only when the security implications are understood.
-
-**`Grant-SqlVaRunbookPermissions.ps1`**
-
-One-time setup script that grants the Azure Automation Account managed identity the Azure roles required by the SQL Vulnerability Assessment runbook.
-
-### scripts/rollback/
-
-**`rollback-managed-identity-storage-auth.sh`**
-
-Emergency rollback procedure for a Managed Identity-based Azure Storage authentication migration. It is designed to restore the previous access model when a deployment must be backed out.
-
-This script changes live configuration. Read it completely, verify the target resources, and confirm that rollback is actually required before execution.
-
-### snippets/
-
-**`BlobStorageService.DefaultAzureCredential.cs`**
-
-Reference C# pattern for authenticating to Azure Blob Storage with `DefaultAzureCredential` rather than a storage account key or connection string.
-
-Use it as a development reference when moving applications toward Managed Identity / Microsoft Entra authentication.
+1. Confirm the target resource, hostname and expected port.
+2. Check DNS resolution and expected private/public IP.
+3. Test TCP connectivity.
+4. Check local DNS servers, routing, VPN and proxy configuration.
+5. Inspect Azure networking: NSG, UDR, Azure Firewall, Private Endpoint, Private DNS, VNet integration and Application Gateway.
+6. If networking succeeds, verify identity, RBAC and application authorization.
+7. Capture output as incident/Jira evidence before making production changes.
+8. Apply the approved fix.
+9. Re-run the same diagnostic to provide before/after evidence.
 
 ## Operating conventions
 
-- Diagnostic and verification scripts should be read-only wherever possible.
-- A script that changes live state should make that fact obvious in its header and should include safeguards or confirmation where practical.
-- Every script should explain **why it exists**, the incident or operational scenario it supports, and what type of evidence or change it produces.
-- Replace example resource names before execution.
-- Never commit credentials, access keys, secrets, certificates, SAS tokens, or exported authentication context.
-- Prefer parameterized scripts rather than hardcoded tenant, subscription, resource-group, or resource names.
-- Save generated diagnostic output with the related Jira ticket or incident when useful.
-- Test change-producing scripts in a non-production environment before production use whenever possible.
-
-## Common troubleshooting sequence
-
-For most Azure connectivity incidents, use this order:
-
-1. Confirm the target hostname and expected port.
-2. Check DNS resolution.
-3. Test TCP connectivity.
-4. Check local DNS servers, routing, VPN, and proxy configuration.
-5. Verify Azure-side networking: NSG, UDR, firewall, Private Endpoint, Private DNS, VNet integration, or Application Gateway.
-6. Verify identity and RBAC if network connectivity succeeds but authorization fails.
-7. Capture the result in the relevant incident/Jira ticket before applying a production change.
-8. After the fix, rerun the same diagnostic script to produce before/after evidence.
+- Diagnostic and verification scripts should remain read-only wherever possible.
+- Change-producing scripts must clearly state their impact and include safeguards or confirmation when practical.
+- Every script should explain **why it exists**, not just what commands it runs.
+- Prefer parameters over hardcoded subscription IDs, resource groups, resource names and tenant values.
+- Save useful output with the related Jira ticket, change record, incident report or technical documentation.
+- Test change-producing scripts in non-production before production use whenever possible.
+- Review scripts before execution; this repository is an engineering toolbox, not a substitute for change control.
 
 ## Adding new scripts
 
-When a troubleshooting command or operational procedure is likely to be used again, convert it into a reusable script and add it to the appropriate folder.
+When a troubleshooting command or operational procedure is likely to be reused, convert it into a script and add it to the appropriate folder. Include a synopsis, operational purpose, requirements, parameters, examples, read-only/change impact, and production-risk notes.
 
-Each new script should include:
-
-- Synopsis
-- Description and operational purpose
-- Whether it is read-only or changes live state
-- Required modules/tools
-- Parameters instead of hardcoded values where possible
-- One or more usage examples
-- Notes about production risk or rollback where applicable
-
-The repository should remain a practical Azure operations toolbox: quick to search, safe to reuse, and useful during real incidents.
+The repository should stay quick to search, safe to reuse, and useful during real Azure incidents.
