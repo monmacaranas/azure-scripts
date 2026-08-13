@@ -1,0 +1,9 @@
+// AzureActivity investigation example for policy assignment deletion activity.
+// Useful when reviewing suspicious/high-impact policy deletion alerts.
+
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where OperationNameValue =~ "MICROSOFT.AUTHORIZATION/POLICYASSIGNMENTS/DELETE"
+| project TimeGenerated, Caller, CallerIpAddress, ActivityStatusValue,
+          ResourceGroup, ResourceId, CorrelationId, Properties
+| order by TimeGenerated desc
