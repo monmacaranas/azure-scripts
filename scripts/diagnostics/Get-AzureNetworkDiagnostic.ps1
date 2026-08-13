@@ -4,35 +4,22 @@ Collects common Windows-side network diagnostics for an Azure-hosted endpoint.
 
 .DESCRIPTION
 Use this when troubleshooting DNS failures, Private Endpoint routing, Application Gateway
-reachability, storage connectivity, IFS/ClickOnce access, or any Azure service that appears
-unreachable from a Windows client/server. The script is read-only. It resolves DNS, tests
-TCP connectivity, captures the route table and DNS client configuration, and can optionally
-make an HTTPS request.
-
-This is intended as the first evidence-gathering step before changing NSGs, UDRs, Private
-DNS, Azure Firewall, Application Gateway, or endpoint configuration.
+reachability, storage connectivity or any Azure service that appears unreachable from a
+Windows client/server. The script is read-only.
 
 .EXAMPLE
-.\Get-AzureNetworkDiagnostic.ps1 -HostName ifs10.erb.global -Port 48080 -HttpsPath /admin
+.\Get-AzureNetworkDiagnostic.ps1 -HostName '<hostname>' -Port 443 -HttpsPath '/health'
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)]
-    [string]$HostName,
-
+    [Parameter(Mandatory)][string]$HostName,
     [int]$Port = 443,
-
     [string]$HttpsPath,
-
     [string]$OutputPath = ".\network-diagnostic-$((Get-Date).ToString('yyyyMMdd-HHmmss')).txt"
 )
 
 $ErrorActionPreference = 'Continue'
-
-function Write-Section {
-    param([string]$Name)
-    "`n===== $Name =====" | Tee-Object -FilePath $OutputPath -Append
-}
+function Write-Section { param([string]$Name) "`n===== $Name =====" | Tee-Object -FilePath $OutputPath -Append }
 
 "Azure Network Diagnostic" | Set-Content $OutputPath
 "Timestamp: $(Get-Date -Format o)" | Add-Content $OutputPath
@@ -43,8 +30,7 @@ Write-Section 'DNS resolution'
 try { Resolve-DnsName $HostName | Format-Table -AutoSize | Out-String | Tee-Object -FilePath $OutputPath -Append } catch { $_ | Out-String | Tee-Object -FilePath $OutputPath -Append }
 
 Write-Section 'TCP connectivity'
-Test-NetConnection -ComputerName $HostName -Port $Port -InformationLevel Detailed |
-    Format-List * | Out-String | Tee-Object -FilePath $OutputPath -Append
+Test-NetConnection -ComputerName $HostName -Port $Port -InformationLevel Detailed | Format-List * | Out-String | Tee-Object -FilePath $OutputPath -Append
 
 Write-Section 'IP configuration'
 Get-NetIPConfiguration | Format-List * | Out-String | Tee-Object -FilePath $OutputPath -Append
@@ -53,9 +39,7 @@ Write-Section 'DNS client configuration'
 Get-DnsClientServerAddress | Format-Table -AutoSize | Out-String | Tee-Object -FilePath $OutputPath -Append
 
 Write-Section 'Route table'
-Get-NetRoute -AddressFamily IPv4 |
-    Sort-Object DestinationPrefix, RouteMetric |
-    Format-Table -AutoSize | Out-String | Tee-Object -FilePath $OutputPath -Append
+Get-NetRoute -AddressFamily IPv4 | Sort-Object DestinationPrefix, RouteMetric | Format-Table -AutoSize | Out-String | Tee-Object -FilePath $OutputPath -Append
 
 Write-Section 'WinHTTP proxy'
 (netsh winhttp show proxy) | Out-String | Tee-Object -FilePath $OutputPath -Append
@@ -68,10 +52,7 @@ if ($HttpsPath) {
         $response = Invoke-WebRequest -Uri $uri -UseBasicParsing -Method Get -TimeoutSec 30
         "URI: $uri" | Tee-Object -FilePath $OutputPath -Append
         "StatusCode: $($response.StatusCode)" | Tee-Object -FilePath $OutputPath -Append
-        "StatusDescription: $($response.StatusDescription)" | Tee-Object -FilePath $OutputPath -Append
-    }
-    catch {
-        "URI: $uri" | Tee-Object -FilePath $OutputPath -Append
+    } catch {
         $_ | Format-List * -Force | Out-String | Tee-Object -FilePath $OutputPath -Append
     }
 }
