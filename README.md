@@ -1,6 +1,6 @@
 # Azure & Infrastructure Scripts
 
-A working collection of PowerShell, Bash, Azure CLI, KQL and reference code used for Azure troubleshooting, verification, operational tasks and controlled automation.
+A working collection of PowerShell, Bash, Azure CLI, KQL, SQL and reference code used for Azure troubleshooting, verification, operational tasks and controlled automation.
 
 The purpose of this repository is to turn repeatable troubleshooting steps and operational work into reusable scripts instead of leaving them only in chat history, Jira tickets or engineer notes.
 
@@ -12,7 +12,7 @@ scripts/
   diagnostics/    Read-only troubleshooting/data collection — safe starting point
   verification/   Read-only checks that confirm a specific configuration or remediation
   rollback/       Makes live changes — requires review and confirmation
-snippets/         Reference code patterns, not standalone runnable scripts
+snippets/         Reference code/query patterns, not standalone production automation
 ```
 
 ## Safety convention
@@ -36,6 +36,9 @@ Azure Automation runbook for Microsoft Defender for Cloud SQL Vulnerability Asse
 One-time role setup for the SQL VA Automation Account managed identity. Grants the permissions required by the baseline runbook.
 
 ### scripts/diagnostics/
+
+**`Get-AzureResourceHealthSnapshot.ps1`**  
+Quick subscription/resource inventory for the start of an incident, handover review or unfamiliar environment investigation. Summarizes resources by type, location and resource group.
 
 **`Get-AzureNetworkDiagnostic.ps1`**  
 General Windows-side network troubleshooting. Collects DNS resolution, TCP connectivity, IP configuration, DNS client configuration, route table, WinHTTP proxy and an optional HTTPS request. Useful for Application Gateway, Private Endpoint, storage, App Service, IFS/ClickOnce and general connectivity investigations.
@@ -78,6 +81,12 @@ Emergency rollback helper for a Managed Identity storage-auth migration. **Makes
 
 **`BlobStorageService.DefaultAzureCredential.cs`**  
 Reference C# pattern for authenticating to Azure Blob Storage with `DefaultAzureCredential` rather than a connection string or account key.
+
+**`AzureMonitor-Http5xxThreshold.kql`**  
+Application Insights/Azure Monitor example query for detecting HTTP 5xx result codes above a threshold in five-minute bins.
+
+**`AzureSql-DatabaseCapacity-Queries.sql`**  
+Read-only SQL queries for database file size, used/reserved space and identifying the largest tables during size-quota investigations.
 
 ## Recommended troubleshooting workflow
 
