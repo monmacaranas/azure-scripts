@@ -1,0 +1,16 @@
+{
+  "Name": "ITP-233 AEA SQL Database Placement Operator",
+  "IsCustom": true,
+  "Description": "Allows ITP-233 automation to read SQL databases and replication links and change elastic-pool placement on the AEA SQL server. Does not grant failover-group administration.",
+  "Actions": [
+    "Microsoft.Sql/servers/databases/read",
+    "Microsoft.Sql/servers/databases/write",
+    "Microsoft.Sql/servers/databases/replicationLinks/read"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/<SAFETRAC-RS-PRD-SUBSCRIPTION-ID>/resourceGroups/aea-rsg-prd-app/providers/Microsoft.Sql/servers/sql-paas-aea-safetrac-prd"
+  ]
+}
